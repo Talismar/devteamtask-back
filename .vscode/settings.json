@@ -1,0 +1,6 @@
+{
+  "python.linting.flake8Enabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.linting.mypyEnabled": true,
+  "python.linting.flake8Args": ["--ignore=F401", "--max-line-length=120"]
+}
