@@ -1,5 +1,12 @@
 from django.contrib.auth.models import AbstractUser
-from django.db.models import CharField, ImageField
+from django.db.models import (
+    Model,
+    CharField,
+    ImageField,
+    EmailField,
+    ForeignKey,
+    CASCADE
+)
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
