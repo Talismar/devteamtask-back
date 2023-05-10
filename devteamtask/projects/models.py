@@ -88,8 +88,8 @@ class Project(Model):
 """
 STUDIES:
 
-PROTECT - O django irá lançar um error caso eu queira excluir um grupo, ou seja
-          irá proteger as tabelas que faz uso da entity.
+PROTECT - O django irá lançar um error caso eu queira excluir um registro, ou seja
+          irá proteger as tabelas que faz uso do registro.
 """
 
 
