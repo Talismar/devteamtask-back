@@ -1,4 +1,5 @@
 from typing import Any, Type
+from django.db.models.query import QuerySet
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
@@ -33,7 +34,7 @@ from .serializers import (
 )
 from django.contrib.auth.models import Group
 from devteamtask.utils.send_email_thred import SendEmailByThread
-from rest_framework.serializers import EmailField, Serializer
+from django.db.models import Q
 
 
 class ProjectViewSet(ModelViewSet):
@@ -43,6 +44,11 @@ class ProjectViewSet(ModelViewSet):
     def __init__(self, *args, **kwargs):
         super(ProjectViewSet, self).__init__(*args, **kwargs)
         self._list_threads: list[SendEmailByThread] = []
+
+    def get_queryset(self) -> QuerySet:
+        user = self.request.user
+        queryset = Project.objects.filter(Q(leader=user.pk) | Q(collaborators__pk=user.pk) | Q(product_onwer=user.pk))
+        return queryset
 
     def get_serializer_class(self) -> Type[BaseSerializer]:
         if self.action in ["list", "retrieve"]:
