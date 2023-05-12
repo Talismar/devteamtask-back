@@ -11,7 +11,12 @@ from devteamtask.projects.api.views import (
     TagViewSet,
     StatusViewSet,
     InviteViewSet,
-    SprintViewSet,
+    EventNotesViewSet,
+    DailyViewSet
+)
+from devteamtask.core.api.views import (
+    TaskViewSet,
+    SprintViewSet
 )
 
 if settings.DEBUG:
@@ -25,6 +30,9 @@ router.register("tags", TagViewSet)
 router.register("status", StatusViewSet)
 router.register("invite", InviteViewSet)
 router.register("sprints", SprintViewSet)
+router.register("tasks", TaskViewSet)
+router.register("event-note", EventNotesViewSet)
+router.register("daily", DailyViewSet)
 
 
 app_name = "api"

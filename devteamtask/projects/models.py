@@ -7,35 +7,17 @@ from django.db.models import (
     DateTimeField,
     TextField,
     EmailField,
-    TextChoices,
+    ImageField,
     SET_NULL,
     CASCADE,
-    PROTECT
+    PROTECT,
 )
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from devteamtask.utils.projects import in_three_days, get_url
-
+from devteamtask.utils.projects import in_three_days, get_url, STATE
+from django.db.models.signals import post_save
 
 User = get_user_model()
-
-
-class Sprint(Model):
-
-    class STATE(TextChoices):
-        IN_PROGRESS = "1", "IN_PROGRESS"
-        FINISHED = "2", "FINISHED"
-
-    name = CharField(max_length=120)
-    description = TextField()
-    state = CharField(max_length=2, choices=STATE.choices, default=STATE.IN_PROGRESS)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = "Sprint"
-        verbose_name_plural = "Sprints"
 
 
 class Tag(Model):
@@ -60,29 +42,48 @@ class Status(Model):
         verbose_name_plural = "Status"
 
 
+class EventNotes(Model):
+    planning = TextField(blank=True, null=True)
+    review = TextField(blank=True, null=True)
+    retrospective = TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Event notes"
+        verbose_name_plural = "Event notes"
+
+
 class Project(Model):
-
-    class STATE(TextChoices):
-        IN_PROGRESS = "1", "IN_PROGRESS"
-        FINISHED = "2", "FINISHED"
-
     name = CharField(max_length=120)
     start_data = DateField(auto_now_add=True)
     end_data = DateField()
+
     leader = ForeignKey(User, on_delete=CASCADE, related_name='leader')
     product_onwer = ForeignKey(User, on_delete=SET_NULL, null=True, blank=True, related_name="product_onwer")
     collaborators = ManyToManyField(User, related_name='collaborators', blank=True)
-    sprints = ManyToManyField(Sprint, related_name="sprints", blank=True)
+
     tags = ManyToManyField(Tag, related_name="tags", blank=True)
     status = ManyToManyField(Status, related_name="status", blank=True)
     state = CharField(max_length=2, choices=STATE.choices, default=STATE.IN_PROGRESS)
+    logo_url = ImageField(upload_to="projects/logo", blank=True, null=True)
+    event_notes = ForeignKey(EventNotes, on_delete=PROTECT, blank=True, null=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.id} - {self.name}"
 
     class Meta:
         verbose_name = "Project"
         verbose_name_plural = "Projects"
+
+
+class Daily(Model):
+    note = TextField()
+    created_at = DateField(auto_now_add=True)
+    updated_at = DateField(auto_now=True)
+    event_notes_id = ForeignKey(EventNotes, on_delete=PROTECT)
+
+    class Meta:
+        verbose_name = "Daily"
+        verbose_name_plural = "Daily"
 
 
 """

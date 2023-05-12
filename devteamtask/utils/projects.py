@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from django.utils.crypto import get_random_string
 from django.utils.timezone import get_current_timezone, make_aware
-
+from django.db.models import TextChoices
 from environ import Env
 env = Env(
     DEBUG=(bool, False)
@@ -19,3 +19,8 @@ def in_three_days():
 
 def get_url():
     return env("BACK_URL") + "token=" + get_random_string(length=24)
+
+
+class STATE(TextChoices):
+    IN_PROGRESS = "1", "IN_PROGRESS"
+    FINISHED = "2", "FINISHED"

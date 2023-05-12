@@ -5,10 +5,9 @@ from devteamtask.projects.models import (
     Invite,
     Tag,
     Status,
-    Sprint,
 )
 
-model_list = [Project, Invite, Tag, Status, Sprint]
+model_list = [Project, Invite, Tag, Status]
 
 for model in model_list:
     admin.site.register(model)

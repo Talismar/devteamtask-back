@@ -14,7 +14,7 @@ class GroupNestedSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
     email = serializers.EmailField(required=True)
     name = serializers.CharField(required=True)
     groups = GroupNestedSerializer(many=True, required=False)
