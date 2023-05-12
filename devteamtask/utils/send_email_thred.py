@@ -1,4 +1,5 @@
 from threading import Thread
+from typing import Any
 from django.core.mail import send_mail
 from django.conf import settings
 from devteamtask.projects.models import Project
@@ -6,7 +7,7 @@ from devteamtask.projects.models import Project
 
 class SendEmailByThread(Thread):
 
-    def __init__(self, thread_name: str, instance: Project, email: str, link):
+    def __init__(self, thread_name: str, instance: Project | Any, email: str, link):
         Thread.__init__(self)
         self.thread_name = thread_name
         self._instance = instance

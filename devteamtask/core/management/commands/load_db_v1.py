@@ -15,15 +15,45 @@ def create_default_group():
 
 
 def create_default_user():
-    usernames = ["deleted", "admin"]
+    print("Creating default user...")
+
+    user_data = [
+        {
+            "username": "admin",
+            "email": "admin.una@gmail.com",
+            "password": 'argon2$argon2id$v=19$m=102400,t=2,p=8$WHQzS3ZaYWczQUYydTFZd2VmOU42VQ$CHpjmk76A/cU2C7W43ObB+tVkiUSNB86FRj3wDs9es4',  # noqa
+            "is_superuser": True,
+            "is_staff": True,
+            "is_active": True,
+        },
+        {
+            "username": "deleted_user",
+            "email": "deleted_user.una@gmail.com",
+            "password": 'argon2$argon2id$v=19$m=102400,t=2,p=8$WHQzS3ZaYWczQUYydTFZd2VmOU42VQ$CHpjmk76A/cU2C7W43ObB+tVkiUSNB86FRj3wDs9es4',  # noqa
+            "is_staff": True,
+            "is_active": True,
+        },
+    ]
+
+    for user in user_data:
+        instance, created = User.objects.get_or_create(username=user["username"], defaults=user)
+        print(created)
 
 
 class Command(BaseCommand):
-    help = "Closes the specified poll for voting"
+    help = "Load default data"
 
     def handle(self, *args, **options):
+        self.stdout.write(
+            self.style.SUCCESS("CREATE GROUPS")
+        )
         create_default_group()
 
         self.stdout.write(
-            self.style.SUCCESS('Successfully closed poll "%s"' % "GROUPS")
+            self.style.SUCCESS("CREATE USERS")
+        )
+        create_default_user()
+
+        self.stdout.write(
+            self.style.SUCCESS("DATA LOADING SUCCESS")
         )

@@ -1,10 +1,8 @@
 from typing import Any
-from django.contrib.auth import get_user_model
+from devteamtask.users.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
-
-User = get_user_model()
 
 
 class GroupNestedSerializer(serializers.ModelSerializer):
@@ -39,11 +37,11 @@ class UserSerializer(serializers.ModelSerializer):
             "url": {"view_name": "api:user-detail", "lookup_field": "username"},
         }
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> User:
         validated_data["password"] = make_password(validated_data.get("password"))
         return super(UserSerializer, self).create(validated_data)
 
-    def update(self, instance: Any, validated_data: Any) -> Any:
+    def update(self, instance: User, validated_data: Any) -> User:
         validated_data["password"] = make_password(validated_data.get("password"))
         return super().update(instance, validated_data)
 

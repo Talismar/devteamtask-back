@@ -83,7 +83,7 @@ class ProjectViewSet(ModelViewSet):
 
         return product_onwer, collaborators
 
-    def send_email_collaborators(self, instance: Project, emails: list[str]):
+    def send_email_collaborators(self, instance: Project | Any, emails: list[str]):
         for enum, email in enumerate(emails):
             thread_name = f"collaborator - {enum}"
             link = self.save_invite(instance, email)
@@ -92,7 +92,7 @@ class ProjectViewSet(ModelViewSet):
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
 
-    def save_invite(self, instance: Project, email: str) -> str:
+    def save_invite(self, instance: Project | Any, email: str) -> str:
         data = {
             "project_id": instance,
             "email": email,
@@ -137,6 +137,7 @@ class ProjectViewSet(ModelViewSet):
             print(thread.thread_name)
             thread.join()
 
+        # Check errors in email sending
         errors_in_sending = False
         for thread in self._list_threads:
             errors_in_sending = thread.get_errors()
@@ -146,7 +147,7 @@ class ProjectViewSet(ModelViewSet):
         serializer_response = {
             "data": {
                 **serializer.data,
-                "leader": request.user.email,
+                "leader": request.user.email,  # type: ignore
             }
         }
 

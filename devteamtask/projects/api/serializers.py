@@ -50,8 +50,8 @@ class TagSerializer(ModelSerializer):
         fields = ["id", "name", "project_id"]
 
     def create(self, validated_data: TagCreationDataType) -> Tag:
-        name = validated_data.get('name')
-        project_id = validated_data.pop("project_id")
+        name = validated_data.get("name")
+        project_id = validated_data.pop("project_id")    # type: ignore
 
         default = {"name": name}
         instance_tag, created = Tag.objects.get_or_create(name__iexact=name, defaults=default)
@@ -71,13 +71,14 @@ class StatusSerializer(ModelSerializer):
 
     def create(self, validated_data: StatusCreationDataType) -> Status:
         name = validated_data.get('name')
-        project_id = validated_data.pop("project_id")
+        project_id = validated_data.pop("project_id", None)   # type: ignore
 
         default = {"name": name}
         instance_status, created = Status.objects.get_or_create(name__iexact=name, defaults=default)
 
-        # Assign the instance to the project
-        Project.objects.get(pk=project_id).status.add(instance_status)
+        if type(project_id) == int:
+            # Assign the instance to the project
+            Project.objects.get(pk=project_id).status.add(instance_status)
 
         return instance_status
 
