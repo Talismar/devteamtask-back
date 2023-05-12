@@ -31,18 +31,18 @@ from .serializers import (
     DailySerializer,
     EmailSerializer
 )
-from threading import Thread
-from time import sleep
-from django.core.validators import validate_email
-from django.core.mail import send_mail
-from django.conf import settings
-from rest_framework.serializers import EmailField, Serializer
 from django.contrib.auth.models import Group
+from devteamtask.utils.send_email_thred import SendEmailByThread
+from rest_framework.serializers import EmailField, Serializer
 
 
 class ProjectViewSet(ModelViewSet):
     queryset = Project.objects.all()
     filterset_fields = ['leader', 'collaborators', 'product_onwer']
+
+    def __init__(self, *args, **kwargs):
+        super(ProjectViewSet, self).__init__(*args, **kwargs)
+        self._list_threads: list[SendEmailByThread] = []
 
     def get_serializer_class(self) -> Type[BaseSerializer]:
         if self.action in ["list", "retrieve"]:
@@ -61,13 +61,13 @@ class ProjectViewSet(ModelViewSet):
                 pass
             else:
                 error_message = serializer_email.errors.pop("email")
-                return Response({"product_onwer": error_message}, status=status.HTTP_400_BAD_REQUEST)
+                return {"product_onwer": error_message}, False
 
         if collaborators:
             errors_emails = []
             has_errors = False
             for enum, collaborator in enumerate(collaborators):
-                serializer_email = EmailSerializer(data={"email": product_onwer})
+                serializer_email = EmailSerializer(data={"email": collaborator})
 
                 if serializer_email.is_valid():
                     pass
@@ -79,13 +79,20 @@ class ProjectViewSet(ModelViewSet):
                     })
 
             if has_errors:
-                return Response({"collaborators": errors_emails}, status=status.HTTP_400_BAD_REQUEST)
+                return product_onwer, {"collaborators": errors_emails}
 
         return product_onwer, collaborators
 
-    def save_invite_and_send_email(self, instance: Project, email: str):
-        print("Email sending")
+    def send_email_collaborators(self, instance: Project, emails: list[str]):
+        for enum, email in enumerate(emails):
+            thread_name = f"collaborator - {enum}"
+            link = self.save_invite(instance, email)
 
+            send_email_thread = SendEmailByThread(thread_name, instance, email, link)
+            self._list_threads.append(send_email_thread)
+            send_email_thread.start()
+
+    def save_invite(self, instance: Project, email: str) -> str:
         data = {
             "project_id": instance,
             "email": email,
@@ -95,37 +102,27 @@ class ProjectViewSet(ModelViewSet):
         new_invite = Invite.objects.create(**data)
         new_invite.save()
 
-        send_mail(
-            subject="Title",
-            message="Link" + str(new_invite.link),
-            from_email=settings.EMAIL_HOST_USER,
-            recipient_list=["talismar788.una@gmail.com"]
-        )
-
-        # t1 = Thread(target=send_mail, args=(1.2,), name="SEND_EMAIL_OWNER")
-        # t1.start()
-
-    def send_email_collaborators(self, instance: Project, emails: list[str]):
-        for email in emails:
-            self.send_email_collaborators(instance, email)
+        return new_invite.link
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         product_onwer, collaborators = self.email_validation(request)
+
+        if type(collaborators) == dict:
+            return Response(collaborators, status=status.HTTP_400_BAD_REQUEST)
+
+        if type(product_onwer) == dict:
+            return Response(product_onwer, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        serializer_response = {
-            "data": {
-                **serializer.data,
-                "leader": request.user.email
-            }
-        }
-
         if product_onwer:
-            self.save_invite_and_send_email(serializer.instance, product_onwer)
+            link = self.save_invite(serializer.instance, product_onwer)
+            send_email_thread = SendEmailByThread("product_onwer", serializer.instance, product_onwer, link)
+            self._list_threads.append(send_email_thread)
+            send_email_thread.start()
 
         if collaborators:
             self.send_email_collaborators(serializer.instance, collaborators)
@@ -133,7 +130,25 @@ class ProjectViewSet(ModelViewSet):
         # self.lookup_field = "pk"
         # self.kwargs = {"pk": serializer.data["id"]}
         # instance = self.get_object()
-        # serializer_response = Project_LR_Serializer(instance=instance)
+        # serializer_response = Project_LR_Serializer(instance=instance
+
+        # Await the threads to finish
+        for thread in self._list_threads:
+            print(thread.thread_name)
+            thread.join()
+
+        errors_in_sending = False
+        for thread in self._list_threads:
+            errors_in_sending = thread.get_errors()
+            if errors_in_sending:
+                break
+
+        serializer_response = {
+            "data": {
+                **serializer.data,
+                "leader": request.user.email,
+            }
+        }
 
         return Response(serializer_response["data"], status=status.HTTP_201_CREATED, headers=headers)
 

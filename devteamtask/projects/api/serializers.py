@@ -7,7 +7,8 @@ from rest_framework.serializers import (
     SlugRelatedField,
     ValidationError,
     EmailField,
-    Serializer
+    Serializer,
+    IntegerField
 )
 from devteamtask.projects.models import (
     Project,
@@ -25,6 +26,10 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.models import Group
 from rest_framework.response import Response
+from devteamtask.projects.types import (
+    TagCreationDataType,
+    StatusCreationDataType
+)
 # from devteamtask.core.api.serializers import SprintSerializer
 
 
@@ -38,31 +43,43 @@ class CollaboratorsNestedSerializer(ModelSerializer):
 
 
 class TagSerializer(ModelSerializer):
+    project_id = IntegerField(write_only=True, required=True)
+
     class Meta:
         model = Tag
-        fields = "__all__"
+        fields = ["id", "name", "project_id"]
 
-    def create(self, validated_data: Any) -> Any:
-        project_id = self.context["request"].data.get("project_id", False)
-        instance = super().create(validated_data)
+    def create(self, validated_data: TagCreationDataType) -> Tag:
+        name = validated_data.get('name')
+        project_id = validated_data.pop("project_id")
 
-        Project.objects.get(pk=project_id).tags.add(instance)
+        default = {"name": name}
+        instance_tag, created = Tag.objects.get_or_create(name__iexact=name, defaults=default)
 
-        return instance
+        # Assign the instance to the project
+        Project.objects.get(pk=project_id).tags.add(instance_tag)
+
+        return instance_tag
 
 
 class StatusSerializer(ModelSerializer):
+    project_id = IntegerField(write_only=True, required=True)
+
     class Meta:
         model = Status
-        fields = "__all__"
+        fields = ["id", "name", "project_id"]
 
-    def create(self, validated_data: Any) -> Any:
-        project_id = self.context["request"].data.get("project_id", False)
-        instance = super().create(validated_data)
+    def create(self, validated_data: StatusCreationDataType) -> Status:
+        name = validated_data.get('name')
+        project_id = validated_data.pop("project_id")
 
-        Project.objects.get(pk=project_id).status.add(instance)
+        default = {"name": name}
+        instance_status, created = Status.objects.get_or_create(name__iexact=name, defaults=default)
 
-        return instance
+        # Assign the instance to the project
+        Project.objects.get(pk=project_id).status.add(instance_status)
+
+        return instance_status
 
 
 class InviteSerializer(ModelSerializer):
