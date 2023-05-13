@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 def create_default_group():
-    groups_name = ["Administrator", "Master", "Onwer", "Collaborators"]
+    groups_name = ["Administrator", "Master", "Owner", "Collaborator"]
 
     for group_name in groups_name:
         default = {"name": group_name}

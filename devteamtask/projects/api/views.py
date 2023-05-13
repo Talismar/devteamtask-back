@@ -1,5 +1,7 @@
 from typing import Any, Type
 from django.db.models.query import QuerySet
+from django.http import HttpRequest
+from django.http.response import HttpResponseBase
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
@@ -35,6 +37,11 @@ from .serializers import (
 from django.contrib.auth.models import Group
 from devteamtask.utils.send_email_thred import SendEmailByThread
 from django.db.models import Q
+from .permissions import UnauthenticatedGet
+from rest_framework.exceptions import NotAuthenticated
+from django.shortcuts import redirect
+from datetime import datetime
+from django.utils.timezone import get_current_timezone, make_aware
 
 
 class ProjectViewSet(ModelViewSet):
@@ -98,17 +105,17 @@ class ProjectViewSet(ModelViewSet):
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
 
-    def save_invite(self, instance: Project | Any, email: str) -> str:
+    def save_invite(self, instance: Project | Any, email: str, group_name) -> str:
         data = {
             "project_id": instance,
             "email": email,
-            "user_group": Group.objects.get(id=1)
+            "user_group": Group.objects.get(name=group_name)
         }
 
         new_invite = Invite.objects.create(**data)
         new_invite.save()
 
-        return new_invite.link
+        return new_invite.token
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         product_onwer, collaborators = self.email_validation(request)
@@ -125,13 +132,13 @@ class ProjectViewSet(ModelViewSet):
         headers = self.get_success_headers(serializer.data)
 
         if product_onwer:
-            link = self.save_invite(serializer.instance, product_onwer)
+            link = self.save_invite(serializer.instance, product_onwer, 'Owner')
             send_email_thread = SendEmailByThread("product_onwer", serializer.instance, product_onwer, link)
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
 
         if collaborators:
-            self.send_email_collaborators(serializer.instance, collaborators)
+            self.send_email_collaborators(serializer.instance, collaborators, 'Collaborator')
 
         # self.lookup_field = "pk"
         # self.kwargs = {"pk": serializer.data["id"]}
@@ -178,6 +185,54 @@ class SprintViewSet(ModelViewSet):
 class InviteViewSet(ModelViewSet):
     queryset = Invite.objects.all()
     serializer_class = InviteSerializer
+    lookup_field = 'token'
+
+    def __init__(self, *args, **kwargs):
+        super(InviteViewSet, self).__init__(*args, **kwargs)
+        self.redirect_front = False
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
+        response = super().dispatch(request, *args, **kwargs)
+
+        if response.status_code == 401:
+            return redirect("http://127.0.0.1:3000/login")
+
+        return response
+
+    def get_object(self) -> Invite:
+        return super().get_object()
+
+    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+
+        if not (request.user.email == instance.email):
+            return Response({
+                "error": {
+                    "Email address is not valid"
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        today_date = datetime.now()
+        today = make_aware(today_date, get_current_timezone())
+
+        if not instance.expires > today:
+            return Response({
+                "error": {
+                    "Token expired"
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        instance_project = Project.objects.get(pk=instance.project_id)
+
+        if instance.user_group.name == 'Owner':
+            instance_project.product_onwer = request.user
+        else:
+            instance_project.collaborators.add(request.user)
+
+        instance_project.save()
+
+        return Response(serializer.data)
 
 
 class EventNotesViewSet(ModelViewSet):

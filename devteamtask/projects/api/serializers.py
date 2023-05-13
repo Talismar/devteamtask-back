@@ -30,7 +30,6 @@ from devteamtask.projects.types import (
     TagCreationDataType,
     StatusCreationDataType
 )
-# from devteamtask.core.api.serializers import SprintSerializer
 
 
 User = get_user_model()

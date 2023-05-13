@@ -8,6 +8,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         token["username"] = user.username
+        token["bonfim"] = "bonfim"
         # token["groups"] = user.get_all_groups()
         # token["permissions"] = user.get_permissions
 

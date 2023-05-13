@@ -20,7 +20,7 @@ def in_three_days():
 
 
 def get_url():
-    return env("BACK_URL") + "token=" + get_random_string(length=24)
+    return get_random_string(length=24)
 
 
 class STATE(TextChoices):

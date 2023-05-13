@@ -37,5 +37,5 @@ router.register("daily", DailyViewSet)
 
 app_name = "api"
 urlpatterns = [
-    path("users/change-password/", change_password_view, name="change-password")
+    path("users/change-password/", change_password_view, name="change-password"),
 ] + router.urls
