@@ -3,8 +3,8 @@ from devteamtask.projects.models import Project
 
 
 class ProjectFilter(filters.FilterSet):
-    min_price = filters.NumberFilter(field_name="onwer", lookup_expr='gte')
-    max_price = filters.NumberFilter(field_name="onwer", lookup_expr='lte')
+    min_price = filters.NumberFilter(field_name="owner", lookup_expr='gte')
+    max_price = filters.NumberFilter(field_name="owner", lookup_expr='lte')
 
     class Meta:
         model = Project

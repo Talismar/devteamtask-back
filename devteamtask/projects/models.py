@@ -50,15 +50,16 @@ class EventNotes(Model):
     class Meta:
         verbose_name = "Event notes"
         verbose_name_plural = "Event notes"
+        db_table = "event_notes"
 
 
 class Project(Model):
     name = CharField(max_length=120)
-    start_data = DateField(auto_now_add=True)
-    end_data = DateField()
+    start_date = DateField(auto_now_add=True)
+    end_date = DateField()
 
     leader = ForeignKey(User, on_delete=CASCADE, related_name='leader')
-    product_onwer = ForeignKey(User, on_delete=SET_NULL, null=True, blank=True, related_name="product_onwer")
+    product_owner = ForeignKey(User, on_delete=SET_NULL, null=True, blank=True, related_name="product_owner")
     collaborators = ManyToManyField(User, related_name='collaborators', blank=True)
 
     tags = ManyToManyField(Tag, related_name="tags", blank=True)
@@ -91,6 +92,9 @@ STUDIES:
 
 PROTECT - O django irá lançar um error caso eu queira excluir um registro, ou seja
           irá proteger as tabelas que faz uso do registro.
+
+SET_NULL - Atribuindo o atributt null=True se a instance for apagada ele vai atribuir
+           null ao campo de relacionamento
 """
 
 

@@ -8,7 +8,8 @@ from rest_framework.serializers import (
     ValidationError,
     EmailField,
     Serializer,
-    IntegerField
+    IntegerField,
+    BooleanField
 )
 from devteamtask.projects.models import (
     Project,
@@ -18,14 +19,10 @@ from devteamtask.projects.models import (
     EventNotes,
     Daily
 )
+from collections import OrderedDict
 from devteamtask.core.models import Sprint
 from django.contrib.auth import get_user_model
 from rest_framework.request import Request
-from django.core.validators import validate_email
-from django.core.mail import send_mail
-from django.conf import settings
-from django.contrib.auth.models import Group
-from rest_framework.response import Response
 from devteamtask.projects.types import (
     TagCreationDataType,
     StatusCreationDataType
@@ -52,6 +49,13 @@ class TagSerializer(ModelSerializer):
         name = validated_data.get("name")
         project_id = validated_data.pop("project_id")    # type: ignore
 
+        # user = self.context["request"].user
+        # project_ids = Project.objects.filter(Q(leader=user.pk) | Q(collaborators__pk=user.pk) |
+        #  Q(product_owner=user.pk)).values_list("id", flat=True)
+
+        # if not (project_id in project_ids):
+        #     raise ValidationError({"error": "Sem permissão para criar tag"})
+
         default = {"name": name}
         instance_tag, created = Tag.objects.get_or_create(name__iexact=name, defaults=default)
 
@@ -70,7 +74,7 @@ class StatusSerializer(ModelSerializer):
 
     def create(self, validated_data: StatusCreationDataType) -> Status:
         name = validated_data.get('name')
-        project_id = validated_data.pop("project_id", None)   # type: ignore
+        project_id = validated_data.pop("project_id", None)  # type: ignore
 
         default = {"name": name}
         instance_status, created = Status.objects.get_or_create(name__iexact=name, defaults=default)
@@ -95,12 +99,18 @@ class SprintSerializer(ModelSerializer):
 
 
 class Project_CUD_Serializer(ModelSerializer):
-    state = SerializerMethodField(read_only=True)
     leader = HiddenField(default=CurrentUserDefault())
 
     class Meta:
         model = Project
-        fields = "__all__"
+        fields = [
+            "id",
+            "leader",
+            "end_date",
+            "collaborators",
+            "product_owner",
+            "name"
+        ]
         extra_kwargs = {
             'leader': {'required': False}
         }
@@ -136,7 +146,7 @@ class Project_LR_Serializer(ModelSerializer):
     status = StatusSerializer(read_only=True, many=True)
     tags = TagSerializer(read_only=True, many=True)
     collaborators = CollaboratorsNestedSerializer(read_only=True, many=True)
-    product_onwer: SlugRelatedField = SlugRelatedField(slug_field='email', read_only=True)
+    product_owner: SlugRelatedField = SlugRelatedField(slug_field='email', read_only=True)
     leader = CollaboratorsNestedSerializer(read_only=True)
     # sprint_set = SprintSerializer(many=True)
 
@@ -148,8 +158,9 @@ class Project_LR_Serializer(ModelSerializer):
             "status",
             "tags",
             "collaborators",
-            "product_onwer",
+            "product_owner",
             "leader",
+            "name",
             # "sprint_set"
         ]
 

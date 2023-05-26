@@ -1,7 +1,9 @@
 from rest_framework.serializers import (
-    ModelSerializer
+    ModelSerializer,
+    BooleanField
 )
 from devteamtask.core.models import (
+    Notification,
     Sprint,
     Tasks
 )
@@ -21,4 +23,11 @@ class SprintSerializer(ModelSerializer):
 
     class Meta:
         model = Sprint
+        fields = "__all__"
+
+
+class NotificationSerializer(ModelSerializer):
+
+    class Meta:
+        model = Notification
         fields = "__all__"

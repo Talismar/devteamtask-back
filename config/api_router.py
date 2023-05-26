@@ -16,16 +16,17 @@ from devteamtask.projects.api.views import (
 )
 from devteamtask.core.api.views import (
     TaskViewSet,
-    SprintViewSet
+    SprintViewSet,
+    NotificationViewSet
 )
 
 if settings.DEBUG:
     router = DefaultRouter()
-# else:
-#     router = SimpleRouter()
+else:
+    router = SimpleRouter()  # type: ignore
 
 router.register("users", UserViewSet)
-router.register("projects", ProjectViewSet)
+router.register("projects", ProjectViewSet, basename="projects")
 router.register("tags", TagViewSet)
 router.register("status", StatusViewSet)
 router.register("invite", InviteViewSet)
@@ -33,6 +34,7 @@ router.register("sprints", SprintViewSet)
 router.register("tasks", TaskViewSet)
 router.register("event-note", EventNotesViewSet)
 router.register("daily", DailyViewSet)
+router.register("notifications", NotificationViewSet, basename="notifications")
 
 
 app_name = "api"

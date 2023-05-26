@@ -5,6 +5,7 @@ from django.db.models import (
     DateTimeField,
     IntegerField,
     ForeignKey,
+    BooleanField,
     CASCADE,
     PROTECT,
     SET_NULL,
@@ -16,9 +17,7 @@ from devteamtask.projects.models import (
     Tag,
     Status
 )
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
+from devteamtask.users.models import User
 
 
 class Sprint(Model):
@@ -56,3 +55,13 @@ class Tasks(Model):
     class Meta:
         verbose_name = "Task"
         verbose_name_plural = "Tasks"
+
+
+class Notification(Model):
+    user = ForeignKey(User, on_delete=CASCADE)
+    title = CharField(max_length=48)
+    description = CharField(max_length=80)
+    state = BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.user.name}"

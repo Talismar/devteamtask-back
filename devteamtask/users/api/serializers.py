@@ -3,6 +3,7 @@ from devteamtask.users.models import User
 from django.contrib.auth.models import Group
 from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
 
 
 class GroupNestedSerializer(serializers.ModelSerializer):
@@ -13,7 +14,10 @@ class GroupNestedSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, min_length=8)
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(required=True, validators=[UniqueValidator(
+        queryset=User.objects.all(),
+        message="Email address already exists"
+    )])
     name = serializers.CharField(required=True)
     groups = GroupNestedSerializer(many=True, required=False)
 
@@ -21,7 +25,6 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
             "name",
             "email",
             "password",
@@ -32,17 +35,27 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "is_superuser",
         ]
-
+        # validators = [
+        #     UniqueTogetherValidator(
+        #         queryset=User.objects.all(),
+        #         fields=['email'],
+        #         message="Generic message for all errors"
+        #     )
+        # ]
         extra_kwargs = {
-            "url": {"view_name": "api:user-detail", "lookup_field": "username"},
+            "url": {"view_name": "api:user-detail", "lookup_field": "email"},
         }
 
     def create(self, validated_data) -> User:
         validated_data["password"] = make_password(validated_data.get("password"))
         return super(UserSerializer, self).create(validated_data)
 
-    def update(self, instance: User, validated_data: Any) -> User:
-        validated_data["password"] = make_password(validated_data.get("password"))
+    def update(self, instance: User, validated_data: dict) -> User:
+        has_password = validated_data.get('password', False)
+
+        if has_password:
+            validated_data["password"] = make_password(validated_data.get("password"))
+
         return super().update(instance, validated_data)
 
 
