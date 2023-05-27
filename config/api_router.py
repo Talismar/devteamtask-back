@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from devteamtask.users.api.views import (
     UserViewSet,
-    change_password_view
+    change_password_view,
+    generate_token_permanently_by_email
 )
 from devteamtask.projects.api.views import (
     ProjectViewSet,
@@ -40,4 +41,5 @@ router.register("notifications", NotificationViewSet, basename="notifications")
 app_name = "api"
 urlpatterns = [
     path("users/change-password/", change_password_view, name="change-password"),
+    path("auth-permanently/", generate_token_permanently_by_email)
 ] + router.urls

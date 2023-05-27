@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator, UniqueValidator
+from config.settings.base import env
 
 
 class GroupNestedSerializer(serializers.ModelSerializer):
@@ -13,7 +14,7 @@ class GroupNestedSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, min_length=8)
+    password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True, validators=[UniqueValidator(
         queryset=User.objects.all(),
         message="Email address already exists"
@@ -45,6 +46,18 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "url": {"view_name": "api:user-detail", "lookup_field": "email"},
         }
+
+    def validate(self, attrs: Any) -> Any:
+
+        if self.context["request"].META.get("HTTP_ORIGIN") == env("DDT_FRONT_URL"):
+            attrs["password"] = env("SOCIALACCOUNT_AUTH_PASSWORD")
+
+        elif len(attrs["password"]) > 8:
+            raise serializers.ValidationError({
+                "password": "Ensure this field has no more than 8 characters."
+            })
+
+        return attrs
 
     def create(self, validated_data) -> User:
         validated_data["password"] = make_password(validated_data.get("password"))

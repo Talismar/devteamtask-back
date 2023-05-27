@@ -2,15 +2,6 @@ from datetime import datetime, timedelta
 from django.utils.crypto import get_random_string
 from django.utils.timezone import get_current_timezone, make_aware
 from django.db.models import TextChoices
-from environ import Env  # type: ignore
-
-
-env = Env(
-    DEBUG=(bool, False)
-)
-
-# reading .env file
-Env.read_env()
 
 
 def in_three_days():
