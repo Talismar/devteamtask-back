@@ -40,21 +40,11 @@ from django.shortcuts import redirect
 from datetime import datetime
 from django.utils.timezone import get_current_timezone, make_aware
 from devteamtask.users.models import User
-from drf_spectacular.utils import inline_serializer, extend_schema, PolymorphicProxySerializer
+from drf_spectacular.utils import inline_serializer, extend_schema
 from rest_framework import serializers
-
-
-def my_callback(func):
-    def inner(self, request, *args, **kwargs):
-        # request = args[1]
-        # print(args)
-        # print(self)
-        # request.data["talismar"] = "OLA TALISMAR"
-        print("%" * 15)
-        result: Response = func(self, request, *args, **kwargs)
-        return result
-
-    return inner
+from config.settings.base import env
+from rest_framework.permissions import IsAuthenticated
+from .permissions import UnauthenticatedGet
 
 
 class ProjectViewSet(ModelViewSet):
@@ -105,12 +95,12 @@ class ProjectViewSet(ModelViewSet):
 
         return product_owner, collaborators, errors, has_error
 
-    def send_email_collaborators(self, instance: Project | Any, emails: list[str]):
+    def send_email_collaborators(self, instance_project: Project | Any, emails: list[str]):
         for enum, email in enumerate(emails):
             thread_name = f"collaborator - {enum}"
-            link = self.save_invite(instance, email, "Collaborator")
+            link = self.save_invite(instance_project, email, "Collaborator")
 
-            send_email_thread = SendEmailByThread(thread_name, instance, email, link)
+            send_email_thread = SendEmailByThread(thread_name, instance_project, email, link)
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
 
@@ -126,6 +116,31 @@ class ProjectViewSet(ModelViewSet):
 
         return new_invite.token
 
+    def send_emails(self, instance_project, product_owner: str, collaborators: list[str]):
+        if product_owner:
+            link = self.save_invite(instance_project, product_owner, 'Owner')
+            send_email_thread = SendEmailByThread("product_owner", instance_project, product_owner, link)
+            self._list_threads.append(send_email_thread)
+            send_email_thread.start()
+
+        if collaborators:
+            self.send_email_collaborators(instance_project, collaborators)
+
+    def add_email_send_status_in_serializer(self, serializer):
+        # Await the threads to finish
+        for thread in self._list_threads:
+            serializer.data["email_send_status"] = True
+            thread.join()
+
+        # Check errors in email sending
+        for thread in self._list_threads:
+            has_error = thread.get_errors()
+            if has_error:
+                serializer.data["email_send_status"] = False
+                break
+
+        self._list_threads.clear()
+
     @extend_schema(request=inline_serializer(
         name="ProjectCreateSerializer",
         fields={
@@ -135,7 +150,7 @@ class ProjectViewSet(ModelViewSet):
             "end_date": serializers.DateField()
         }
     ), responses=Project_LR_Serializer,
-        description="If there are collaborators or product owner in the request body, the response will contain the email_sent_state attribure included.")  # noqa: E501
+        description="If there are collaborators or product owner in the request body, the response will contain the email_send_state attribute included.")  # noqa: E501
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         product_owner, collaborators, errors, has_error = self.email_validation(request)
 
@@ -145,38 +160,19 @@ class ProjectViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
 
-        if product_owner:
-            link = self.save_invite(serializer.instance, product_owner, 'Owner')
-            send_email_thread = SendEmailByThread("product_owner", serializer.instance, product_owner, link)
-            self._list_threads.append(send_email_thread)
-            send_email_thread.start()
-
-        if collaborators:
-            self.send_email_collaborators(serializer.instance, collaborators)
+        if product_owner or collaborators:
+            self.send_emails(serializer.instance, product_owner, collaborators)
 
         self.lookup_field = "pk"
         self.kwargs = {"pk": serializer.data["id"]}
         instance = self.get_object()
         serializer_response = Project_LR_Serializer(instance=instance)
 
-        # Await the threads to finish
-        for thread in self._list_threads:
-            print(thread.thread_name)
-            serializer_response.data["email_sent_status"] = True
-            thread.join()
+        if product_owner or collaborators:
+            self.add_email_send_status_in_serializer(serializer_response)
 
-        # Check errors in email sending
-        for thread in self._list_threads:
-            has_error = thread.get_errors()
-            if has_error:
-                serializer_response.data["email_sent_status"] = False
-                break
-
-        self._list_threads.clear()
-
-        return Response(serializer_response.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer_response.data, status=status.HTTP_201_CREATED)
 
 
 class TagViewSet(ListAPIView, RetrieveAPIView, CreateAPIView, GenericViewSet):
@@ -193,6 +189,7 @@ class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
     queryset = Invite.objects.all()
     serializer_class = InviteSerializer
     lookup_field = 'token'
+    permission_classes = [IsAuthenticated | UnauthenticatedGet]
 
     def __init__(self, *args, **kwargs):
         super(InviteViewSet, self).__init__(*args, **kwargs)
@@ -201,22 +198,24 @@ class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
         response = super().dispatch(request, *args, **kwargs)
 
-        if response.status_code == 401:
-            return redirect("http://127.0.0.1:3000/login")
+        if response.status_code == 404:
+            messageError = "User or token not found. Please register your account before joining the project."
+            response_redirect = redirect(f"{env('DDT_FRONT_URL')}/login")
+            response_redirect.set_cookie("detail", messageError)
+            return response_redirect
 
         return response
 
-    def get_object(self) -> Invite:
-        return super().get_object()
-
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        instance = self.get_object()
+        instance: Invite = self.get_object()
         serializer = self.get_serializer(instance)
 
-        if not (request.user.email == instance.email):  # type: ignore
+        try:
+            user = User.objects.get(email=instance.email)
+        except User.DoesNotExist:
             return Response({
-                "error": {
-                    "Email address is not valid"
+                "detail": {
+                    "User not found"
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -229,16 +228,15 @@ class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
                 "error": {
                     "Token expired"
                 }
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_404_NOT_FOUND)
 
         instance_project = Project.objects.get(pk=instance.project_id.pk)
-        instance_user: User = request.user  # type: ignore
 
         if instance.user_group.name == 'Owner':
-            instance_project.product_owner = instance_user
+            instance_project.product_owner = user
         else:
             # ManyToManyField
-            instance_project.collaborators.add(instance_user)
+            instance_project.collaborators.add(user)
 
         instance_project.save()
 
@@ -253,6 +251,11 @@ class SprintViewSet(ModelViewSet):
 class EventNotesViewSet(RetrieveUpdateAPIView, ListAPIView, GenericViewSet):
     queryset = EventNotes.objects.all()
     serializer_class = EventNoteSerializer
+
+    def get_queryset(self) -> QuerySet:
+        user = self.request.user
+        queryset = EventNotes.objects.filter(Q(project__leader=user.pk))
+        return queryset
 
 
 class DailyViewSet(ModelViewSet):

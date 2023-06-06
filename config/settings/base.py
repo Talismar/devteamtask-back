@@ -264,3 +264,6 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
+
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+SOCIAL_SECRET = env("GOOGLE_SECRET_KEY")

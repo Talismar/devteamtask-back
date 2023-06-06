@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import (  # type: ignore
     TokenRefreshView,
     TokenVerifyView
 )
+from .auth_provider_token import AuthProviderViewSet
 
 
 urlpatterns = [
@@ -25,11 +26,12 @@ urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
     # DRF auth token
-    path("api/auth-token/", obtain_auth_token),
+    path("api/auth/token/permanent/", obtain_auth_token),
     # SimpleJWT auth token
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path("api/auth/token/provider/", AuthProviderViewSet.as_view()),
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path(

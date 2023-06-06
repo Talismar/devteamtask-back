@@ -4,8 +4,10 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from devteamtask.users.api.views import (
     UserViewSet,
+    GoogleSocialAuthView,
     change_password_view,
-    generate_token_permanently_by_email
+    change_password_by_token_view,
+    generate_permanent_token_by_provider,
 )
 from devteamtask.projects.api.views import (
     ProjectViewSet,
@@ -40,6 +42,8 @@ router.register("notifications", NotificationViewSet, basename="notifications")
 
 app_name = "api"
 urlpatterns = [
-    path("users/change-password/", change_password_view, name="change-password"),
-    path("auth-permanently/", generate_token_permanently_by_email)
+    path("users/change-password/", change_password_view),
+    path("users/change-password-by-token/", change_password_by_token_view),
+    path("auth/token/permanent/provider/", generate_permanent_token_by_provider),
+    path('auth/google/', GoogleSocialAuthView.as_view()),
 ] + router.urls

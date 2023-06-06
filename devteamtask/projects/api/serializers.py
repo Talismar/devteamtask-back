@@ -9,7 +9,7 @@ from rest_framework.serializers import (
     EmailField,
     Serializer,
     IntegerField,
-    BooleanField
+    PrimaryKeyRelatedField
 )
 from devteamtask.projects.models import (
     Project,
@@ -27,6 +27,7 @@ from devteamtask.projects.types import (
     TagCreationDataType,
     StatusCreationDataType
 )
+from rest_flex_fields import FlexFieldsModelSerializer  # type: ignore
 
 
 User = get_user_model()
@@ -141,7 +142,7 @@ class Project_CUD_Serializer(ModelSerializer):
         return instance
 
 
-class Project_LR_Serializer(ModelSerializer):
+class Project_LR_Serializer(FlexFieldsModelSerializer):
     state = SerializerMethodField(read_only=True)
     status = StatusSerializer(read_only=True, many=True)
     tags = TagSerializer(read_only=True, many=True)
@@ -161,6 +162,7 @@ class Project_LR_Serializer(ModelSerializer):
             "product_owner",
             "leader",
             "name",
+            "event_notes",
             # "sprint_set"
         ]
 
@@ -169,9 +171,17 @@ class Project_LR_Serializer(ModelSerializer):
 
 
 class EventNoteSerializer(ModelSerializer):
+    daily_set = PrimaryKeyRelatedField(many=True, read_only=True)  # type: ignore
+
     class Meta:
         model = EventNotes
-        fields = "__all__"
+        fields = [
+            "id",
+            "planning",
+            "review",
+            "retrospective",
+            "daily_set"
+        ]
 
 
 class DailySerializer(ModelSerializer):

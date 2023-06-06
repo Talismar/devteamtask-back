@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import Any
+from config.settings.base import env
 from django.core.mail import send_mail
 from django.conf import settings
 from devteamtask.projects.models import Project
@@ -7,14 +7,14 @@ from devteamtask.projects.models import Project
 
 class SendEmailByThread(Thread):
 
-    def __init__(self, thread_name: str, instance: Project | Any, email: str, link):
+    def __init__(self, thread_name: str, instance: Project, email: str, token):
         Thread.__init__(self)
         self.thread_name = thread_name
-        self._instance = instance
+        self.project = instance
 
         # Falta atribuir o atributo email no recipient_list in send_email func
         self.email = email
-        self.link = link
+        self.token = token
         self.has_errors = False
 
     def get_errors(self):
@@ -23,11 +23,16 @@ class SendEmailByThread(Thread):
     def save_invite_and_send_email(self):
         print("Email sending - Thread " + self.thread_name)
 
+        subject = f"Joining the {self.project.name} project"
+        token = f"<a href='{env('BACK_URL')}/api/invite/{self.token}/'>Joinig now!</a>"
+        message = "Link to joining: " + token
+
         send_mail(
-            subject="Title",
-            message="Link" + str(self.link),
+            subject=subject,
+            message="",
             from_email=settings.EMAIL_HOST_USER,
-            recipient_list=["talismar788.una@gmail.com"]
+            recipient_list=["talismar788.una@gmail.com"],
+            html_message=message
         )
 
     def run(self):

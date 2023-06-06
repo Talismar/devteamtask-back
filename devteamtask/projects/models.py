@@ -15,7 +15,7 @@ from django.db.models import (
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from devteamtask.utils.projects import in_three_days, get_url, STATE
-from django.db.models.signals import post_save
+
 
 User = get_user_model()
 
