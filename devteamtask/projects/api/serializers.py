@@ -13,7 +13,6 @@ from rest_framework.serializers import (
     PrimaryKeyRelatedField,
 )
 from devteamtask.projects.models import Project, Tag, Status, Invite, EventNotes, Daily
-from collections import OrderedDict
 from devteamtask.core.models import Sprint
 from django.contrib.auth import get_user_model
 from rest_framework.request import Request
