@@ -8,7 +8,6 @@ from rest_framework.serializers import (
     ValidationError,
     EmailField,
     Serializer,
-    IntegerField,
     UUIDField,
     PrimaryKeyRelatedField,
 )
@@ -19,6 +18,8 @@ from rest_framework.request import Request
 from devteamtask.projects.types import TagCreationDataType, StatusCreationDataType
 from rest_flex_fields import FlexFieldsModelSerializer  # type: ignore
 from devteamtask.core.api.serializers import RLTaskSerializer
+from devteamtask.core.models import Tasks
+from django.db.models import Q
 
 
 User = get_user_model()
@@ -91,7 +92,7 @@ class SprintSerializer(ModelSerializer):
 
 class Project_CUD_Serializer(ModelSerializer):
     leader = HiddenField(default=CurrentUserDefault())
-    product_owner = EmailField(required=False)
+    product_owner = EmailField(required=False, allow_null=True)
 
     class Meta:
         model = Project
@@ -121,7 +122,7 @@ class Project_LR_Serializer(FlexFieldsModelSerializer):
     collaborators = CollaboratorsNestedSerializer(read_only=True, many=True)
     product_owner: SlugRelatedField = SlugRelatedField(slug_field="email", read_only=True)
     leader = CollaboratorsNestedSerializer(read_only=True)
-    tasks_set = RLTaskSerializer(many=True)
+    tasks_set = SerializerMethodField()
     sprint_set = SprintSerializer(many=True)
 
     class Meta:
@@ -144,6 +145,23 @@ class Project_LR_Serializer(FlexFieldsModelSerializer):
 
     def get_state(self, instance: Project) -> str:
         return instance.get_state_display()
+
+    def get_tasks_set(self, instance: Project):
+        project_task_name = self.context["request"].query_params.get("project_task_name", None)
+        user = self.context["request"].user
+        if project_task_name is not None:
+            active_sprint = instance.sprint_set.last()
+
+            queryset = Tasks.objects.filter(
+                Q(project_id__leader=user.pk)
+                | Q(project_id__collaborators__pk=user.pk)
+                | Q(project_id__product_owner=user.pk),
+                name__icontains=project_task_name,
+                sprint_id=active_sprint,
+            )  # type: ignore
+
+            return RLTaskSerializer(queryset, many=True, context=self.context).data
+        return RLTaskSerializer(instance.tasks_set, many=True, context=self.context).data
 
 
 class EventNoteSerializer(ModelSerializer):

@@ -35,11 +35,12 @@ from rest_framework import serializers
 from config.settings.base import env
 from rest_framework.permissions import IsAuthenticated
 from .permissions import UnauthenticatedGet
-from django.core.mail import send_mail
 
 
 class ProjectViewSet(ModelViewSet):
-    filterset_fields = ["leader", "collaborators", "product_owner"]
+    # filter_backends = [filters.SearchFilter]
+    # search_fields = ["tasks_set__name"]
+    # filterset_fields = ["leader", "collaborators", "product_owner"]
 
     def __init__(self, *args, **kwargs):
         super(ProjectViewSet, self).__init__(*args, **kwargs)
@@ -47,7 +48,10 @@ class ProjectViewSet(ModelViewSet):
 
     def get_queryset(self) -> QuerySet:
         user = self.request.user
-        queryset = Project.objects.filter(Q(leader=user.pk) | Q(collaborators__pk=user.pk) | Q(product_owner=user.pk))
+        queryset = Project.objects.filter(
+            Q(leader=user.pk) | Q(collaborators__pk=user.pk) | Q(product_owner=user.pk)
+        ).distinct()
+
         return queryset
 
     def get_serializer_class(self) -> Type[BaseSerializer]:
@@ -103,14 +107,14 @@ class ProjectViewSet(ModelViewSet):
 
         return new_invite.token
 
-    def send_emails(self, instance_project, product_owner: str, collaborators: list[str]):
+    def send_emails(self, instance_project, product_owner: str, collaborators: list[str] | bool = False):
         if product_owner:
             link = self.save_invite(instance_project, product_owner, "Owner")
             send_email_thread = SendEmailByThread("product_owner", instance_project, product_owner, link)
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
 
-        if collaborators:
+        if isinstance(collaborators, list):
             self.send_email_collaborators(instance_project, collaborators)
 
     def add_email_send_status_in_serializer(self, serializer):
@@ -139,7 +143,8 @@ class ProjectViewSet(ModelViewSet):
             },
         ),
         responses=Project_LR_Serializer,
-        description="If there are collaborators or product owner in the request body, the response will contain the email_send_state attribute included.",
+        description="""If there are collaborators or product owner in the request body,
+        the response will contain the email_send_state attribute included.""",
     )  # noqa: E501
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         product_owner, collaborators, errors, has_error = self.email_validation(request)
@@ -157,7 +162,7 @@ class ProjectViewSet(ModelViewSet):
         self.lookup_field = "pk"
         self.kwargs = {"pk": serializer.data["id"]}
         instance = self.get_object()
-        serializer_response = Project_LR_Serializer(instance=instance)
+        serializer_response = Project_LR_Serializer(instance=instance, context={"request": request})
 
         if product_owner or collaborators:
             self.add_email_send_status_in_serializer(serializer_response)
@@ -173,6 +178,26 @@ class ProjectViewSet(ModelViewSet):
             self.send_email_collaborators(instance_project, collaborators)
 
         return Response({}, status=status.HTTP_200_OK)
+
+    def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        request.data._mutable = True  # type: ignore
+        product_owner = request.data.pop("product_owner", None)
+        instance_project: Project = self.get_object()
+
+        if isinstance(product_owner, list):
+            product_owner = product_owner[0]
+
+            if instance_project.product_owner is None or (
+                instance_project.product_owner is not None and instance_project.product_owner.email != product_owner
+            ):
+                self.send_emails(instance_project, product_owner)
+                request.data.setdefault("product_owner", None)
+
+        serializer = self.get_serializer(instance_project, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
 
 
 class TagViewSet(ListAPIView, RetrieveAPIView, CreateAPIView, GenericViewSet):
@@ -234,7 +259,11 @@ class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
         instance_project.save()
         instance.delete()
 
-        return redirect(f"{env('DDT_FRONT_URL')}/")
+        successMessage = f"You have been successfully added to project {instance_project.name}!"
+        response_redirect = redirect(f"{env('DDT_FRONT_URL')}/")
+        response_redirect.set_cookie("detail_success", successMessage)
+
+        return response_redirect
 
 
 class SprintViewSet(ModelViewSet):

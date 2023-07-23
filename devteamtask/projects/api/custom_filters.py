@@ -1,5 +1,6 @@
 from django_filters import rest_framework as filters
 from devteamtask.projects.models import Project, EventNotes
+from devteamtask.core.models import Tasks
 
 
 # class ProjectFilter(filters.FilterSet):
@@ -12,14 +13,14 @@ from devteamtask.projects.models import Project, EventNotes
 
 
 class EventNotesFilter(filters.FilterSet):
-
     class Meta:
         model = EventNotes
-        fields = ['project__id']
+        fields = ["project__id"]
 
 
-# class DailyFilter(filters.FilterSet):
+class ProjectTaskFilter(filters.FilterSet):
+    tasks_name = filters.CharFilter(field_name="tasks_set__name")
 
-#     class Meta:
-#         model = Dail
-#         fields = ['event_notes_id']
+    class Meta:
+        model = Project
+        fields = ["tasks_name"]
