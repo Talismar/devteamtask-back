@@ -1,16 +1,6 @@
-from rest_framework.serializers import (
-    ModelSerializer,
-    HiddenField,
-    CurrentUserDefault
-)
-from devteamtask.core.models import (
-    Notification,
-    Sprint,
-    Tasks
-)
-from devteamtask.projects.models import (
-    Status, Tag
-)
+from rest_framework.serializers import ModelSerializer, HiddenField, CurrentUserDefault, SerializerMethodField
+from devteamtask.core.models import Notification, Sprint, Tasks
+from devteamtask.projects.models import Status, Tag
 from devteamtask.users.models import User
 
 
@@ -27,9 +17,17 @@ class TagNestedSerializer(ModelSerializer):
 
 
 class UserNestedSerializer(ModelSerializer):
+    avatar_url = SerializerMethodField()
+
     class Meta:
         model = User
         fields = ["name", "email", "id", "avatar_url"]
+
+    def get_avatar_url(self, obj):
+        request = self.context.get("request")
+        if obj.avatar_url.url is not None:
+            return request.build_absolute_uri(obj.avatar_url.url)  # type: ignore
+        return None
 
 
 class TaskSerializer(ModelSerializer):
@@ -54,14 +52,12 @@ class RLTaskSerializer(ModelSerializer):
 
 
 class SprintSerializer(ModelSerializer):
-
     class Meta:
         model = Sprint
         fields = "__all__"
 
 
 class NotificationSerializer(ModelSerializer):
-
     class Meta:
         model = Notification
         fields = "__all__"

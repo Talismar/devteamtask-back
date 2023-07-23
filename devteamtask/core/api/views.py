@@ -71,7 +71,7 @@ class TaskViewSet(ModelViewSet):
         self.lookup_field = "pk"
         self.kwargs = {"pk": serializer.data["id"]}
         instance = self.get_object()
-        serializer_response = RLTaskSerializer(instance=instance)
+        serializer_response = RLTaskSerializer(instance=instance, context={"request": request})
 
         return Response(serializer_response.data, status=HTTP_201_CREATED)
 
