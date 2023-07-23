@@ -6,13 +6,11 @@ from devteamtask.projects.models import Project
 
 
 class SendEmailByThread(Thread):
-
     def __init__(self, thread_name: str, instance: Project, email: str, token):
         Thread.__init__(self)
         self.thread_name = thread_name
         self.project = instance
 
-        # Falta atribuir o atributo email no recipient_list in send_email func
         self.email = email
         self.token = token
         self.has_errors = False
@@ -31,8 +29,8 @@ class SendEmailByThread(Thread):
             subject=subject,
             message="",
             from_email=settings.EMAIL_HOST_USER,
-            recipient_list=["talismar788.una@gmail.com"],
-            html_message=message
+            recipient_list=[self.email],
+            html_message=message,
         )
 
     def run(self):

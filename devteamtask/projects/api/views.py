@@ -4,23 +4,12 @@ from django.http import HttpRequest
 from django.http.response import HttpResponseBase
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.generics import (
-    ListAPIView,
-    RetrieveAPIView,
-    CreateAPIView,
-    RetrieveUpdateAPIView
-)
-from devteamtask.projects.models import (
-    Project,
-    Tag,
-    Status,
-    Invite,
-    EventNotes,
-    Daily
-)
+from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView, RetrieveUpdateAPIView
+from devteamtask.projects.models import Project, Tag, Status, Invite, EventNotes, Daily
 from devteamtask.core.models import Sprint
 from .serializers import (
     Project_CUD_Serializer,
@@ -31,8 +20,9 @@ from .serializers import (
     SprintSerializer,
     EventNoteSerializer,
     DailySerializer,
-    EmailSerializer
+    EmailSerializer,
 )
+from .custom_filters import EventNotesFilter
 from django.contrib.auth.models import Group
 from devteamtask.utils.send_email_thred import SendEmailByThread
 from django.db.models import Q
@@ -45,10 +35,11 @@ from rest_framework import serializers
 from config.settings.base import env
 from rest_framework.permissions import IsAuthenticated
 from .permissions import UnauthenticatedGet
+from django.core.mail import send_mail
 
 
 class ProjectViewSet(ModelViewSet):
-    filterset_fields = ['leader', 'collaborators', 'product_owner']
+    filterset_fields = ["leader", "collaborators", "product_owner"]
 
     def __init__(self, *args, **kwargs):
         super(ProjectViewSet, self).__init__(*args, **kwargs)
@@ -82,7 +73,6 @@ class ProjectViewSet(ModelViewSet):
                 errors["product_owner"] = error_message
 
         if collaborators:
-
             for enum, collaborator in enumerate(collaborators):
                 serializer_email = EmailSerializer(data={"email": collaborator})
 
@@ -105,11 +95,8 @@ class ProjectViewSet(ModelViewSet):
             send_email_thread.start()
 
     def save_invite(self, instance: Project | Any, email: str, group_name) -> str:
-        data = {
-            "project_id": instance,
-            "email": email,
-            "user_group": Group.objects.get(name=group_name)
-        }
+        instance_group, _ = Group.objects.get_or_create(name=group_name)
+        data = {"project_id": instance, "email": email, "user_group": instance_group}
 
         new_invite = Invite.objects.create(**data)
         new_invite.save()
@@ -118,7 +105,7 @@ class ProjectViewSet(ModelViewSet):
 
     def send_emails(self, instance_project, product_owner: str, collaborators: list[str]):
         if product_owner:
-            link = self.save_invite(instance_project, product_owner, 'Owner')
+            link = self.save_invite(instance_project, product_owner, "Owner")
             send_email_thread = SendEmailByThread("product_owner", instance_project, product_owner, link)
             self._list_threads.append(send_email_thread)
             send_email_thread.start()
@@ -141,16 +128,19 @@ class ProjectViewSet(ModelViewSet):
 
         self._list_threads.clear()
 
-    @extend_schema(request=inline_serializer(
-        name="ProjectCreateSerializer",
-        fields={
-            "collaborators": serializers.ListField(child=serializers.EmailField()),
-            "product_owner": serializers.EmailField(),
-            "name": serializers.CharField(),
-            "end_date": serializers.DateField()
-        }
-    ), responses=Project_LR_Serializer,
-        description="If there are collaborators or product owner in the request body, the response will contain the email_send_state attribute included.")  # noqa: E501
+    @extend_schema(
+        request=inline_serializer(
+            name="ProjectCreateSerializer",
+            fields={
+                "collaborators": serializers.ListField(child=serializers.EmailField()),
+                "product_owner": serializers.EmailField(),
+                "name": serializers.CharField(),
+                "end_date": serializers.DateField(),
+            },
+        ),
+        responses=Project_LR_Serializer,
+        description="If there are collaborators or product owner in the request body, the response will contain the email_send_state attribute included.",
+    )  # noqa: E501
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         product_owner, collaborators, errors, has_error = self.email_validation(request)
 
@@ -174,6 +164,16 @@ class ProjectViewSet(ModelViewSet):
 
         return Response(serializer_response.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["PATCH"])
+    def add_collaborators(self, request: Request, pk=None):
+        _, collaborators, errors, has_error = self.email_validation(request)
+        instance_project: Project = self.get_object()
+
+        if collaborators:
+            self.send_email_collaborators(instance_project, collaborators)
+
+        return Response({}, status=status.HTTP_200_OK)
+
 
 class TagViewSet(ListAPIView, RetrieveAPIView, CreateAPIView, GenericViewSet):
     queryset = Tag.objects.all()
@@ -188,7 +188,7 @@ class StatusViewSet(ListAPIView, RetrieveAPIView, CreateAPIView, GenericViewSet)
 class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
     queryset = Invite.objects.all()
     serializer_class = InviteSerializer
-    lookup_field = 'token'
+    lookup_field = "token"
     permission_classes = [IsAuthenticated | UnauthenticatedGet]
 
     def __init__(self, *args, **kwargs):
@@ -198,49 +198,43 @@ class InviteViewSet(RetrieveAPIView, CreateAPIView, GenericViewSet):
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
         response = super().dispatch(request, *args, **kwargs)
 
-        if response.status_code == 404:
+        if response.status_code in [400, 404]:
             messageError = "User or token not found. Please register your account before joining the project."
-            response_redirect = redirect(f"{env('DDT_FRONT_URL')}/login")
+            response_redirect = redirect(f"{env('DDT_FRONT_URL')}/")
             response_redirect.set_cookie("detail", messageError)
             return response_redirect
 
         return response
 
-    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def retrieve(self, request: Request, *args: Any, **kwargs: Any):
         instance: Invite = self.get_object()
-        serializer = self.get_serializer(instance)
+        # serializer = self.get_serializer(instance)
+        # print(instance)
 
         try:
             user = User.objects.get(email=instance.email)
         except User.DoesNotExist:
-            return Response({
-                "detail": {
-                    "User not found"
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": {"User not found"}}, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate token days
         today_date = datetime.now()
         today = make_aware(today_date, get_current_timezone())
 
         if not instance.expires > today:
-            return Response({
-                "error": {
-                    "Token expired"
-                }
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": {"Token expired"}}, status=status.HTTP_404_NOT_FOUND)
 
         instance_project = Project.objects.get(pk=instance.project_id.pk)
 
-        if instance.user_group.name == 'Owner':
+        if instance.user_group.name == "Owner":
             instance_project.product_owner = user
         else:
             # ManyToManyField
             instance_project.collaborators.add(user)
 
         instance_project.save()
+        instance.delete()
 
-        return Response(serializer.data)
+        return redirect(f"{env('DDT_FRONT_URL')}/")
 
 
 class SprintViewSet(ModelViewSet):
@@ -251,6 +245,7 @@ class SprintViewSet(ModelViewSet):
 class EventNotesViewSet(RetrieveUpdateAPIView, ListAPIView, GenericViewSet):
     queryset = EventNotes.objects.all()
     serializer_class = EventNoteSerializer
+    filterset_class = EventNotesFilter
 
     def get_queryset(self) -> QuerySet:
         user = self.request.user
@@ -261,3 +256,4 @@ class EventNotesViewSet(RetrieveUpdateAPIView, ListAPIView, GenericViewSet):
 class DailyViewSet(ModelViewSet):
     queryset = Daily.objects.all()
     serializer_class = DailySerializer
+    filterset_fields = ["event_notes_id"]

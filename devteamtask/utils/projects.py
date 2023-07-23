@@ -15,5 +15,5 @@ def get_url():
 
 
 class STATE(TextChoices):
-    IN_PROGRESS = "1", "IN_PROGRESS"
+    IN_PROGRESS = "1", "IN PROGRESS"
     FINISHED = "2", "FINISHED"

@@ -4,11 +4,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken  # type: ignore
 from rest_framework.generics import CreateAPIView
 from devteamtask.users.models import User
-from rest_framework.serializers import (
-    CharField,
-    EmailField,
-    Serializer
-)
+from rest_framework.serializers import CharField, EmailField, Serializer
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 from django.contrib.auth.hashers import check_password
 
@@ -17,8 +13,8 @@ def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
 
     return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
     }
 
 

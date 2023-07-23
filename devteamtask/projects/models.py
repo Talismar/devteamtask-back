@@ -1,3 +1,4 @@
+from uuid import uuid4
 from django.db.models import (
     Model,
     CharField,
@@ -11,6 +12,7 @@ from django.db.models import (
     SET_NULL,
     CASCADE,
     PROTECT,
+    UUIDField
 )
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -54,6 +56,7 @@ class EventNotes(Model):
 
 
 class Project(Model):
+    id = UUIDField(primary_key=True, default=uuid4, editable=False)
     name = CharField(max_length=120)
     start_date = DateField(auto_now_add=True)
     end_date = DateField()
@@ -77,7 +80,7 @@ class Project(Model):
 
 
 class Daily(Model):
-    note = TextField()
+    note = TextField(blank=True)
     created_at = DateField(auto_now_add=True)
     updated_at = DateField(auto_now=True)
     event_notes_id = ForeignKey(EventNotes, on_delete=PROTECT)

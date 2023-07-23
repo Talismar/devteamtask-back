@@ -9,25 +9,17 @@ from rest_framework.serializers import (
     EmailField,
     Serializer,
     IntegerField,
-    PrimaryKeyRelatedField
+    UUIDField,
+    PrimaryKeyRelatedField,
 )
-from devteamtask.projects.models import (
-    Project,
-    Tag,
-    Status,
-    Invite,
-    EventNotes,
-    Daily
-)
+from devteamtask.projects.models import Project, Tag, Status, Invite, EventNotes, Daily
 from collections import OrderedDict
 from devteamtask.core.models import Sprint
 from django.contrib.auth import get_user_model
 from rest_framework.request import Request
-from devteamtask.projects.types import (
-    TagCreationDataType,
-    StatusCreationDataType
-)
+from devteamtask.projects.types import TagCreationDataType, StatusCreationDataType
 from rest_flex_fields import FlexFieldsModelSerializer  # type: ignore
+from devteamtask.core.api.serializers import RLTaskSerializer
 
 
 User = get_user_model()
@@ -36,11 +28,11 @@ User = get_user_model()
 class CollaboratorsNestedSerializer(ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "name", "email"]
+        fields = ["id", "name", "email", "avatar_url"]
 
 
 class TagSerializer(ModelSerializer):
-    project_id = IntegerField(write_only=True, required=True)
+    project_id = UUIDField(write_only=True, required=True)
 
     class Meta:
         model = Tag
@@ -48,7 +40,7 @@ class TagSerializer(ModelSerializer):
 
     def create(self, validated_data: TagCreationDataType) -> Tag:
         name = validated_data.get("name")
-        project_id = validated_data.pop("project_id")    # type: ignore
+        project_id = validated_data.pop("project_id")  # type: ignore
 
         # user = self.context["request"].user
         # project_ids = Project.objects.filter(Q(leader=user.pk) | Q(collaborators__pk=user.pk) |
@@ -61,28 +53,27 @@ class TagSerializer(ModelSerializer):
         instance_tag, created = Tag.objects.get_or_create(name__iexact=name, defaults=default)
 
         # Assign the instance to the project
-        Project.objects.get(pk=project_id).tags.add(instance_tag)
+        Project.objects.get(id=project_id).tags.add(instance_tag)
 
         return instance_tag
 
 
 class StatusSerializer(ModelSerializer):
-    project_id = IntegerField(write_only=True, required=True)
+    project_id = UUIDField(write_only=True, required=True)
 
     class Meta:
         model = Status
         fields = ["id", "name", "project_id"]
 
     def create(self, validated_data: StatusCreationDataType) -> Status:
-        name = validated_data.get('name')
-        project_id = validated_data.pop("project_id", None)  # type: ignore
+        name = validated_data.get("name")
+        project_id = validated_data.pop("project_id")  # type: ignore
 
         default = {"name": name}
         instance_status, created = Status.objects.get_or_create(name__iexact=name, defaults=default)
 
-        if type(project_id) == int:
-            # Assign the instance to the project
-            Project.objects.get(pk=project_id).status.add(instance_status)
+        # Assign the instance to the project
+        Project.objects.get(pk=project_id).status.add(instance_status)
 
         return instance_status
 
@@ -101,20 +92,12 @@ class SprintSerializer(ModelSerializer):
 
 class Project_CUD_Serializer(ModelSerializer):
     leader = HiddenField(default=CurrentUserDefault())
+    product_owner = EmailField(required=False)
 
     class Meta:
         model = Project
-        fields = [
-            "id",
-            "leader",
-            "end_date",
-            "collaborators",
-            "product_owner",
-            "name"
-        ]
-        extra_kwargs = {
-            'leader': {'required': False}
-        }
+        fields = ["id", "leader", "end_date", "collaborators", "product_owner", "name", "logo_url"]
+        extra_kwargs = {"leader": {"required": False}}
 
     def __init__(self, *args, **kwargs):
         super(Project_CUD_Serializer, self).__init__(*args, **kwargs)
@@ -126,19 +109,9 @@ class Project_CUD_Serializer(ModelSerializer):
     def get_state(self, instance: Project) -> str:
         return instance.get_state_display()
 
-    def get_status_ids_default(self):
-        status_default = ["To do", "Doing", "Done"]
-        status_ids = []
-        for status_name in status_default:
-            default = {"name": status_name}
-            instance, created = Status.objects.get_or_create(name=status_name, defaults=default)
-            status_ids.append(instance.id)
-
-        return status_ids
-
     def create(self, validated_data: Any) -> Any:
         instance: Project = super().create(validated_data)
-        instance.status.set(self.get_status_ids_default())
+        instance.status.set([1, 2, 3])
         return instance
 
 
@@ -147,9 +120,10 @@ class Project_LR_Serializer(FlexFieldsModelSerializer):
     status = StatusSerializer(read_only=True, many=True)
     tags = TagSerializer(read_only=True, many=True)
     collaborators = CollaboratorsNestedSerializer(read_only=True, many=True)
-    product_owner: SlugRelatedField = SlugRelatedField(slug_field='email', read_only=True)
+    product_owner: SlugRelatedField = SlugRelatedField(slug_field="email", read_only=True)
     leader = CollaboratorsNestedSerializer(read_only=True)
-    # sprint_set = SprintSerializer(many=True)
+    tasks_set = RLTaskSerializer(many=True)
+    sprint_set = SprintSerializer(many=True)
 
     class Meta:
         model = Project
@@ -163,7 +137,10 @@ class Project_LR_Serializer(FlexFieldsModelSerializer):
             "leader",
             "name",
             "event_notes",
-            # "sprint_set"
+            "sprint_set",
+            "tasks_set",
+            "end_date",
+            "logo_url",
         ]
 
     def get_state(self, instance: Project) -> str:
@@ -175,13 +152,7 @@ class EventNoteSerializer(ModelSerializer):
 
     class Meta:
         model = EventNotes
-        fields = [
-            "id",
-            "planning",
-            "review",
-            "retrospective",
-            "daily_set"
-        ]
+        fields = ["id", "planning", "review", "retrospective", "daily_set"]
 
 
 class DailySerializer(ModelSerializer):
