@@ -5,6 +5,7 @@ redis==4.5.4  # https://github.com/redis/redis-py
 hiredis==2.2.2  # https://github.com/redis/hiredis-py
 django-filter==23.2
 drf-flex-fields==1.0.2
+djangorestframework-simplejwt==5.2.2
 
 # Django
 # ------------------------------------------------------------------------------
