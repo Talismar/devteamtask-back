@@ -6,7 +6,7 @@ hiredis==2.2.2  # https://github.com/redis/hiredis-py
 django-filter==23.2
 drf-flex-fields==1.0.2
 djangorestframework-simplejwt==5.2.2
-
+google-api-python-client==2.87.0
 # Django
 # ------------------------------------------------------------------------------
 django==4.1.9  # pyup: < 4.2  # https://www.djangoproject.com/
