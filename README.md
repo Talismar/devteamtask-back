@@ -92,8 +92,8 @@ This software uses the following open source packages:
 
 ## You may also like...
 
-- [DevTeamTask-CLI](https://github.com/amitmerchant1990/pomolectron) - A task management software for development team
-- [DevTeamTask-Frontend](https://github.com/amitmerchant1990/correo) - A task management software for development team
+- [DevTeamTask-CLI](https://github.com/Talismar/devteamtask-cli) - A task management software for development team
+- [DevTeamTask-Frontend](https://gitlab.com/Talismar/devteamtask-front) - A task management software for development team
 - [DevTeamTask-Figma](https://www.figma.com/file/93HpbAt9qbG8F41DQERB37/DevTeamTask-%7C-PI-02?type=design&mode=design&t=DoRfhoPhuCJtCq7Q-1) - A task management software for development team
 
 ## License
