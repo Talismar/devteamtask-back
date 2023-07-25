@@ -25,11 +25,10 @@ class UserNestedSerializer(ModelSerializer):
 
     def get_avatar_url(self, obj):
         request = self.context.get("request")
-        try:
-            if obj.avatar_url and hasattr(obj.avatar_url, "url"):
-                return request.build_absolute_uri(obj.avatar_url.url)  # type: ignore
-        except ValueError:
-            pass
+
+        if obj.avatar_url and hasattr(obj.avatar_url, "url"):
+            return request.build_absolute_uri(obj.avatar_url.url)  # type: ignore
+
         return None
 
 

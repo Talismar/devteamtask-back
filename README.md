@@ -1,50 +1,109 @@
-# DevTeamTask
 
-A managment task software!
+<h1 align="center">
+  <br>
+  <a href="http://35.198.36.42/"><img src="devTeamTaskLogo.png" alt="DevTeamTask" width="200" style="border-radius: 2px"></a>
+  <br>
+  DevTeamTask
+  <br>
+</h1>
 
-[![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
-[![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+<h4 align="center">A task management software for development team built on top of <a href="https://www.django-rest-framework.org/" target="_blank">Django Rest Framework</a>.</h4>
 
-License: MIT
 
-## Settings
+<p align="center">
+  <a href="https://github.com/cookiecutter/cookiecutter-django/">
+    <img src="https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter"
+         alt="Logo Cookiecutter">
+  </a>
+  <a href="https://github.com/ambv/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 
-Moved to [settings](http://cookiecutter-django.readthedocs.io/en/latest/settings.html).
+</p>
 
-## Basic Commands
+<p align="center">
+  <a href="#key-features">Key Features</a> •
+  <a href="#how-to-use">How To Use</a> •
+  <a href="#credits">Credits</a> •
+  <a href="#license">License</a> •
+  <a href="#contact">Contact</a>
+</p>
 
-### Setting Up Your Users
+![screenshot](devteamtaskgif.gif)
 
-- To create a **normal user account**, just go to Sign Up and fill out the form. Once you submit it, you'll see a "Verify Your E-mail Address" page. Go to your console to see a simulated email verification message. Copy the link into your browser. Now the user's email should be verified and ready to go.
+## Key Features
 
-- To create a **superuser account**, use this command:
+* User control
+  - With support for sending an email if the user wants to reset the password outside the application
+* Socal authentication
+  - Supports: Google and Github
+* Project management  
+* Project status management
+* Project tag management
+* Project sprint management
+* Project task management
+* Event note management
+* Communication with the API via `JWT`
+* Encryption for sensitive information
 
-      $ python manage.py createsuperuser
+## How To Use
 
-For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
+To clone and run this application, you'll need [Git](https://git-scm.com), [Python 3.10.6](https://www.python.org/download/) and [Postgres 15.3](https://www.postgresql.org/download/). From your command line:
 
-### Type checks
+```bash
+# Clone this repository
+$ git clone https://github.com/Talismar/devteamtask-back
 
-Running type checks with mypy:
+# Go into the repository
+$ cd devteamtask-back
 
-    $ mypy devteamtask
+# Create enviroment virtual
+$ python3 -m venv venv
 
-### Test coverage
+# Active enviroment virtual
+$ source venv/bin/activate
 
-To run the tests, check your test coverage, and generate an HTML coverage report:
+# Install dependencies
+$ pip install -r requirements/production.txt
 
-    $ coverage run -m pytest
-    $ coverage html
-    $ open htmlcov/index.html
+# export global variable
+$ export DJANGO_READ_DOT_ENV_FILE=True
 
-#### Running tests with pytest
+# run the project
+$ python manage.py makemigrations
+$ python manage.py migrate
+$ python manage.py load_db_v1
+$ python manage.py runserver
+```
 
-    $ pytest
+> **Note**
+> If you're using Linux Bash for Windows, [see this guide]().
 
-### Live reloading and Sass CSS compilation
+## Credits
 
-Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/developing-locally.html#sass-compilation-live-reloading).
+This software uses the following open source packages:
 
-## Deployment
+- [Django](https://www.djangoproject.com/)
+- [Django Rest Framework](https://github.com/encode/django-rest-framework)
+- [Django Filters](https://django-filter.readthedocs.io/en/stable/)
+- [Simple JWT](https://django-rest-framework-simplejwt.readthedocs.io/en/latest/)
+- [Django Cors Headers](https://github.com/adamchainz/django-cors-headers)
+- [DRF Spectacular](https://github.com/tfranzel/drf-spectacular)
+- [DRF Flex Fields](https://github.com/rsinger86/drf-flex-fields)
 
-The following details how to deploy this application.
+
+## You may also like...
+
+- [DevTeamTask-CLI](https://github.com/amitmerchant1990/pomolectron) - A task management software for development team
+- [DevTeamTask-Frontend](https://github.com/amitmerchant1990/correo) - A task management software for development team
+- [DevTeamTask-Figma](https://www.figma.com/file/93HpbAt9qbG8F41DQERB37/DevTeamTask-%7C-PI-02?type=design&mode=design&t=DoRfhoPhuCJtCq7Q-1) - A task management software for development team
+
+## License
+
+MIT
+
+---
+
+## Contact 
+
+> GitHub [Talismar](https://github.com/Talismar)
+> Facebook [Tali Fer Costa](https://www.facebook.com/tali.fercosta)
+> Gmail [talismar788.una@gmail.com]()
