@@ -41,7 +41,7 @@
 * Project sprint management
 * Project task management
 * Event note management
-* Communication with the API via `JWT`
+* App routes secured with `JWT` authorization
 * Encryption for sensitive information
 
 ## How To Use
